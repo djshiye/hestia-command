@@ -4,11 +4,16 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1c1f26; --surface-2: #262a34; --border: #2f3440; --text: #e9eaee; --muted: #9aa1ae;
     --accent: #f08243; --good: #4cc38a; --bad: #f07a6a; color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+    --bg: #1c1f26; --surface-2: #262a34; --border: #2f3440; --text: #e9eaee; --muted: #9aa1ae;
+    --accent: #f08243; --good: #4cc38a; --bad: #f07a6a; color-scheme: dark;
+  }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {

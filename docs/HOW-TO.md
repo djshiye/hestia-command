@@ -43,6 +43,12 @@ The key is stored encrypted for your Windows user.
 
 ![Control](screenshot-control.png)
 
+## Appearance
+
+Hestia follows the Windows light or dark theme. To choose yourself, use the **Auto / Light / Dark** control at the top right of the window. The tray popup follows the same choice.
+
+![Dark mode](screenshot-dark.png)
+
 ## Tray icon
 
 Closing the window doesn't stop Hestia: it keeps running as a small flame icon by the clock (click the **^** arrow on the taskbar if Windows hides it; you can drag it out to keep it visible).

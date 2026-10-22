@@ -6,6 +6,7 @@
 <title>Hestia</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="app.css">
+<script src="theme.js"></script>
 </head>
 <body>
 <header class="topbar">
@@ -16,8 +17,15 @@
       <div class="brand-sub">Local control for Sonoff switches</div>
     </div>
   </div>
-  <div class="pill" id="localPill" title="Hestia only talks to devices on this network">
-    <span class="dot"></span>Local only, no cloud
+  <div class="top-right">
+    <div class="seg" id="themeSeg" role="radiogroup" aria-label="Appearance" title="Appearance">
+      <button type="button" role="radio" data-theme="" aria-checked="true">Auto</button>
+      <button type="button" role="radio" data-theme="light" aria-checked="false">Light</button>
+      <button type="button" role="radio" data-theme="dark" aria-checked="false">Dark</button>
+    </div>
+    <div class="pill" id="localPill" title="Hestia only talks to devices on this network">
+      <span class="dot"></span>Local only, no cloud
+    </div>
   </div>
 </header>
 

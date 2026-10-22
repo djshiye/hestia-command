@@ -45,6 +45,7 @@ Then follow the three steps in the app: **Test**, **Setup**, **Control**. A full
 | **1. Test** | Checks that the switches on this network accept local control. It changes nothing. |
 | **2. Setup** | Reads each switch's local key once, straight from the switch, and stores it encrypted for your Windows user. |
 | **3. Control** | Unlocks after the test passes. It has an on/off button with live state, Ctrl+Alt keyboard shortcuts, and the option to start with Windows. |
+| **Appearance** | Follows the Windows light or dark theme, or pick **Auto / Light / Dark** at the top right. |
 | **Tray icon** | Closing the window leaves Hestia running as a flame icon by the clock. Click it for a small popup with an on/off switch per device, right-click it for a menu with the same plus **Open Hestia** and **Quit**. Hover it to see every switch's state. |
 | **Activity** | Logs every command, drop-off and reconnection, so you can check the switch stays reliable with the cloud blocked. You can export the log. |
 

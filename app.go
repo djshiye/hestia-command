@@ -525,6 +525,7 @@ func (a *App) apiState(http.ResponseWriter, *http.Request) (any, error) {
 	a.mu.Unlock()
 	return map[string]any{
 		"version":            appVersion,
+		"theme":              cfg.Theme,
 		"started":            a.started,
 		"interfaces":         a.browser.Interfaces(),
 		"packets":            packets,
@@ -756,10 +757,11 @@ func (a *App) apiRemove(_ http.ResponseWriter, r *http.Request) (any, error) {
 
 func (a *App) apiSettings(_ http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
-		Background *bool `json:"background"`
-		Autostart  *bool `json:"autostart"`
-		AutoUpdate *bool `json:"autoUpdate"`
-		ResetTest  bool  `json:"resetTest"`
+		Background *bool   `json:"background"`
+		Autostart  *bool   `json:"autostart"`
+		AutoUpdate *bool   `json:"autoUpdate"`
+		Theme      *string `json:"theme"`
+		ResetTest  bool    `json:"resetTest"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		return nil, errors.New("bad request")
@@ -773,6 +775,9 @@ func (a *App) apiSettings(_ http.ResponseWriter, r *http.Request) (any, error) {
 			in.Background = &t // starting with Windows only makes sense if Hestia stays running
 		}
 	}
+	if in.Theme != nil && *in.Theme != "" && *in.Theme != "light" && *in.Theme != "dark" {
+		return nil, errors.New("unknown theme")
+	}
 	if in.AutoUpdate != nil && *in.AutoUpdate {
 		defer a.updater.Kick()
 	}
@@ -782,6 +787,9 @@ func (a *App) apiSettings(_ http.ResponseWriter, r *http.Request) (any, error) {
 		}
 		if in.AutoUpdate != nil {
 			c.AutoUpdateOff = !*in.AutoUpdate
+		}
+		if in.Theme != nil {
+			c.Theme = *in.Theme
 		}
 		if in.ResetTest {
 			c.TestPassed = false

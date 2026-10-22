@@ -81,6 +81,7 @@
 
   function render() {
     if (!state) return;
+    if (state.theme) document.documentElement.dataset.theme = state.theme; else delete document.documentElement.dataset.theme;
     const list = $("list");
     const devices = state.devices.filter((d) => d.saved);
     if (!devices.length) {

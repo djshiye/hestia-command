@@ -299,8 +299,16 @@
     $("installBtn").textContent = i.present ? "Update" : "Install";
   }
 
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme) root.dataset.theme = theme; else delete root.dataset.theme;
+    try { if (theme) localStorage.setItem("hestia-theme", theme); else localStorage.removeItem("hestia-theme"); } catch { /* private mode */ }
+    for (const b of document.querySelectorAll("#themeSeg button")) b.setAttribute("aria-checked", b.dataset.theme === theme ? "true" : "false");
+  }
+
   function render() {
     const s = state;
+    applyTheme(s.theme || "");
     renderInstall(s);
     renderUpdate(s);
     renderSteps(s);
@@ -462,6 +470,12 @@
     }
   });
 
+  for (const b of document.querySelectorAll("#themeSeg button")) {
+    b.addEventListener("click", async () => {
+      applyTheme(b.dataset.theme);
+      try { await api("POST", "/api/settings", { theme: b.dataset.theme }); } catch (err) { toast(err.message, true); }
+    });
+  }
   $("autoUpdateToggle").addEventListener("change", async (e) => {
     try {
       await api("POST", "/api/settings", { autoUpdate: e.target.checked });

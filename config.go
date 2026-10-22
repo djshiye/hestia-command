@@ -23,10 +23,12 @@ type Config struct {
 	Devices []DeviceCfg `json:"devices"`
 	// Stored inverted: closing the window leaves Hestia in the tray unless
 	// someone chose otherwise.
-	ExitOnClose   bool      `json:"exitOnClose"`
-	TrayHintShown bool      `json:"trayHintShown"`
-	TestPassed    bool      `json:"testPassed"`
-	LastTest      time.Time `json:"lastTest"`
+	ExitOnClose   bool `json:"exitOnClose"`
+	TrayHintShown bool `json:"trayHintShown"`
+	// Theme is "" (follow Windows), "light" or "dark".
+	Theme      string    `json:"theme,omitempty"`
+	TestPassed bool      `json:"testPassed"`
+	LastTest   time.Time `json:"lastTest"`
 	// Stored inverted so that updates are on unless someone turned them off.
 	AutoUpdateOff bool `json:"autoUpdateOff"`
 }
