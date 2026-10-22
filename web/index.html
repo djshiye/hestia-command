@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hestia</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="icon.svg" alt="" width="32" height="32">
+    <div>
+      <div class="brand-name">Hestia</div>
+      <div class="brand-sub">Local control for Sonoff switches</div>
+    </div>
+  </div>
+  <div class="pill" id="localPill" title="Hestia only talks to devices on this network">
+    <span class="dot"></span>Local only, no cloud
+  </div>
+</header>
+
+<nav class="steps" aria-label="Sections">
+  <button class="step" data-tab="test"><span class="num">1</span><span><b>Test</b><small id="stepTestSub">Check the network</small></span></button>
+  <button class="step" data-tab="setup"><span class="num">2</span><span><b>Setup</b><small id="stepSetupSub">Save the switch key</small></span></button>
+  <button class="step" data-tab="control"><span class="num">3</span><span><b>Control</b><small id="stepControlSub">Unlocks after 1 and 2</small></span></button>
+  <button class="step step-plain" data-tab="activity"><span class="num icon-num" aria-hidden="true">&#8801;</span><span><b>Activity</b><small>Log and stability</small></span></button>
+</nav>
+
+<main>
+  <!-- TEST -->
+  <section class="tab" id="tab-test">
+    <div class="card hero">
+      <div>
+        <h1>Is local control possible here?</h1>
+        <p class="muted">Hestia listens for Sonoff switches announcing local control on this network, then checks it can reach them directly. Nothing is changed on the switch.</p>
+      </div>
+      <button class="btn primary big" id="runTest">Run test</button>
+    </div>
+    <div id="testResult" hidden></div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Switches seen on this network</h2>
+        <span class="muted small" id="scanInfo"></span>
+      </div>
+      <div id="seenList"></div>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section class="tab" id="tab-setup" hidden>
+    <div class="card">
+      <h1>Save the switch's key</h1>
+      <p class="muted">Each switch encrypts its local commands with its own key. Hestia reads it once, straight from the switch, and stores it encrypted for your Windows account. No eWeLink account is used.</p>
+      <ol class="guide">
+        <li>
+          <h3>Put the switch in setup mode</h3>
+          <p>Press and hold the switch's button for about 5 seconds until the blue light blinks fast. Then hold it again for about 5 seconds until the blinking changes pattern. You don't need to open the case.</p>
+        </li>
+        <li>
+          <h3>Join the switch's Wi-Fi from this PC</h3>
+          <p>Open the Wi-Fi menu and connect to <b class="mono">ITEAD-10000&hellip;</b> with password <b class="mono">12345678</b>. Windows will say "No internet". That's expected.</p>
+        </li>
+        <li>
+          <h3>Read the key</h3>
+          <div class="row">
+            <button class="btn primary" id="readKey">Read key from switch</button>
+            <span id="readStatus" class="muted"></span>
+          </div>
+        </li>
+        <li>
+          <h3>Reconnect and let the switch return</h3>
+          <p>Reconnect this PC to the normal Wi-Fi. The switch leaves setup mode by itself after a few minutes or when its power is cycled. If it doesn't come back, add it again in the eWeLink app as usual; the key stays the same.</p>
+        </li>
+      </ol>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Saved switches</h2></div>
+      <div id="savedList"></div>
+      <details class="manual">
+        <summary>Enter a key by hand</summary>
+        <form id="manualForm" class="form-grid" autocomplete="off">
+          <label>Device ID<input name="id" placeholder="1000a1b2c3" maxlength="10" spellcheck="false" required></label>
+          <label>Device key<input name="key" type="password" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" maxlength="64" spellcheck="false" required></label>
+          <button class="btn" type="submit">Save key</button>
+        </form>
+      </details>
+    </div>
+  </section>
+
+  <!-- CONTROL -->
+  <section class="tab" id="tab-control" hidden>
+    <div id="locked" class="card locked" hidden>
+      <div class="lock-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 1 1 6 0v3H9Z"/></svg>
+      </div>
+      <h1>Control unlocks after the test</h1>
+      <ul class="checklist" id="lockReasons"></ul>
+    </div>
+    <div id="controlArea" hidden>
+      <div class="grid" id="tiles"></div>
+      <div class="card settings">
+        <label class="toggle">
+          <input type="checkbox" id="bgToggle">
+          <span class="track"><span class="thumb"></span></span>
+          <span><b>Keep running after closing this window</b><small class="muted">Needed for keyboard shortcuts. Open Hestia again to bring this window back.</small></span>
+        </label>
+        <button class="btn danger-ghost" id="quitBtn">Quit Hestia</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACTIVITY -->
+  <section class="tab" id="tab-activity" hidden>
+    <div class="card">
+      <div class="card-head">
+        <h2>Stability</h2>
+        <span class="muted small">Since Hestia started. Leave it open for 48 hours after blocking the cloud.</span>
+      </div>
+      <div id="stability"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Activity</h2>
+        <button class="btn small" id="exportLog">Export log</button>
+      </div>
+      <ul class="events" id="events"></ul>
+    </div>
+  </section>
+</main>
+
+<footer class="foot muted small"><span id="ver"></span><span>Talks only to devices on your local network.</span></footer>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
