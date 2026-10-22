@@ -1,6 +1,6 @@
 # Hestia: step-by-step guide
 
-Hestia runs on your PC and talks only to devices on your local network. It never contacts eWeLink or any internet service.
+Hestia runs on your PC and talks only to devices on your local network. It never contacts eWeLink. The only internet call it makes is a daily check on GitHub for a new version, which you can turn off.
 
 ## 1. Install
 
