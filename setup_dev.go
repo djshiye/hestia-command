@@ -22,9 +22,6 @@ func init() {
 			updateHosts[u.Hostname()] = true
 		}
 	}
-	if k := os.Getenv("HESTIA_UPDATE_PUBKEY"); k != "" {
-		updatePublicKey = k
-	}
 	if c := os.Getenv("HESTIA_DEV_NET"); c != "" {
 		_, n, err := net.ParseCIDR(c)
 		if err == nil {

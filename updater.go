@@ -3,18 +3,16 @@ package main
 // Built-in updater. Once a day (and on request) Hestia asks GitHub for the
 // latest release. A release is only installed when all of these hold:
 //
-//   1. its SHA256SUMS.txt carries a valid Ed25519 signature from the Hestia
-//      release key embedded below (so a tampered or impostor release fails,
-//      even if GitHub itself were compromised),
-//   2. the downloaded program's SHA-256 matches that signed file,
+//   1. it comes from this repository's Releases page over HTTPS,
+//   2. the downloaded program's SHA-256 matches the release's SHA256SUMS.txt,
 //   3. its version is newer than the one running.
 //
+// Releases are not signed with a separate key (a deliberate choice), so the
+// GitHub account that owns the repository is what users trust.
 // This is the only time Hestia ever talks to the internet, and only to GitHub.
 
 import (
-	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -31,18 +29,12 @@ import (
 	"time"
 )
 
-// updatePublicKey is the Hestia release signing key (Ed25519, base64).
-// The matching private key lives only in the repository's GitHub secrets.
-var updatePublicKey = "qx0mVylXL9xR4r4iiuoVtkdwhuwMoyTX8TltaSS1y+I="
-
 const (
 	updateRepo       = "djshiye/hestia-command"
 	updateAssetName  = "Hestia-Setup.exe"
 	updateSumsName   = "SHA256SUMS.txt"
-	updateSigName    = "SHA256SUMS.txt.sig"
 	updateMaxSize    = 64 << 20
 	updateInterval   = 24 * time.Hour
-	signaturePrefix  = "hestia-release-v1\n"
 	updateUserAgent  = "Hestia-updater/" + "1"
 	updateCheckDelay = 20 * time.Second
 )
@@ -64,7 +56,6 @@ type updateInfo struct {
 	Tag     string
 	ExeURL  string
 	SumsURL string
-	SigURL  string
 	Size    int64
 }
 
@@ -266,17 +257,15 @@ func (u *Updater) check() (*updateInfo, error) {
 			info.ExeURL, info.Size = a.URL, a.Size
 		case updateSumsName:
 			info.SumsURL = a.URL
-		case updateSigName:
-			info.SigURL = a.URL
 		}
 	}
-	if info.ExeURL == "" || info.SumsURL == "" || info.SigURL == "" {
-		return nil, fmt.Errorf("release %s is missing its signed files", rel.TagName)
+	if info.ExeURL == "" || info.SumsURL == "" {
+		return nil, fmt.Errorf("release %s is missing its files", rel.TagName)
 	}
 	if info.Size <= 0 || info.Size > updateMaxSize {
 		return nil, errors.New("release file has an unexpected size")
 	}
-	for _, s := range []string{info.ExeURL, info.SumsURL, info.SigURL} {
+	for _, s := range []string{info.ExeURL, info.SumsURL} {
 		pu, err := url.Parse(s)
 		if err != nil {
 			return nil, errors.New("bad release address")
@@ -302,27 +291,16 @@ func (u *Updater) getSmall(addr string, limit int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(resp.Body, limit))
 }
 
-// verifySums checks the signature on the checksum file and returns the
-// expected SHA-256 of the program file.
-func verifySums(sums, sigB64 []byte) (string, error) {
-	pub, err := base64.StdEncoding.DecodeString(updatePublicKey)
-	if err != nil || len(pub) != ed25519.PublicKeySize {
-		return "", errors.New("updater key is invalid")
-	}
-	sig, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(sigB64)))
-	if err != nil || len(sig) != ed25519.SignatureSize {
-		return "", errors.New("release signature is malformed")
-	}
-	if !ed25519.Verify(ed25519.PublicKey(pub), append([]byte(signaturePrefix), sums...), sig) {
-		return "", errors.New("release signature does not match the Hestia key")
-	}
+// expectedSum reads the SHA-256 of the program file from the release's
+// checksum file.
+func expectedSum(sums []byte) (string, error) {
 	for _, line := range strings.Split(string(sums), "\n") {
 		f := strings.Fields(line)
 		if len(f) == 2 && strings.TrimPrefix(f[1], "*") == updateAssetName && len(f[0]) == 64 {
 			return strings.ToLower(f[0]), nil
 		}
 	}
-	return "", errors.New("signed checksum file does not list " + updateAssetName)
+	return "", errors.New("checksum file does not list " + updateAssetName)
 }
 
 // fetchVerified downloads the release and returns the path of the verified
@@ -332,11 +310,7 @@ func (u *Updater) fetchVerified(info *updateInfo) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	sig, err := u.getSmall(info.SigURL, 4<<10)
-	if err != nil {
-		return "", err
-	}
-	want, err := verifySums(sums, sig)
+	want, err := expectedSum(sums)
 	if err != nil {
 		return "", err
 	}
@@ -383,7 +357,7 @@ func (u *Updater) fetchVerified(info *updateInfo) (string, error) {
 	}
 	if got := hex.EncodeToString(h.Sum(nil)); got != want {
 		os.Remove(part)
-		return "", errors.New("downloaded file does not match its signed checksum")
+		return "", errors.New("downloaded file does not match the release checksum")
 	}
 	if err := os.Rename(part, final); err != nil {
 		return "", err

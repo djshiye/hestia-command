@@ -68,7 +68,7 @@ If you'd rather Hestia close together with its window, turn off **Stay in the tr
 
 ## Updates
 
-Hestia keeps itself up to date. Once a day it asks GitHub whether there's a new version, checks the new version's signature, and installs it when you're not using the window. If the window is open, a green banner offers **Restart and update**; the restart takes a few seconds and your switches stay as they were.
+Hestia keeps itself up to date. Once a day it asks GitHub whether there's a new version, checks the download against its published checksum, and installs it when you're not using the window. If the window is open, a green banner offers **Restart and update**; the restart takes a few seconds and your switches stay as they were.
 
 - The switch **Update automatically** at the bottom of the window turns this off. **Check now** checks on the spot.
 - This daily check is the only time Hestia ever uses the internet, and it only talks to GitHub.

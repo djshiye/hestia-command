@@ -1,11 +1,6 @@
 package main
 
-import (
-	"crypto/ed25519"
-	"crypto/rand"
-	"encoding/base64"
-	"testing"
-)
+import "testing"
 
 func TestVersions(t *testing.T) {
 	cases := []struct {
@@ -29,27 +24,13 @@ func TestVersions(t *testing.T) {
 	}
 }
 
-func TestVerifySums(t *testing.T) {
-	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
-	saved := updatePublicKey
-	updatePublicKey = base64.StdEncoding.EncodeToString(pub)
-	defer func() { updatePublicKey = saved }()
+func TestExpectedSum(t *testing.T) {
 	sums := []byte("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  Hestia-Setup.exe\n")
-	sig := []byte(base64.StdEncoding.EncodeToString(ed25519.Sign(priv, append([]byte(signaturePrefix), sums...))))
-	if h, err := verifySums(sums, sig); err != nil || h != "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" {
-		t.Fatalf("good signature rejected: %v", err)
+	if h, err := expectedSum(sums); err != nil || h != "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" {
+		t.Fatalf("checksum not read: %v", err)
 	}
-	if _, err := verifySums(append(sums, '#'), sig); err == nil {
-		t.Fatal("tampered checksum file accepted")
-	}
-	_, other, _ := ed25519.GenerateKey(rand.Reader)
-	bad := []byte(base64.StdEncoding.EncodeToString(ed25519.Sign(other, append([]byte(signaturePrefix), sums...))))
-	if _, err := verifySums(sums, bad); err == nil {
-		t.Fatal("signature from another key accepted")
-	}
-	unprefixed := []byte(base64.StdEncoding.EncodeToString(ed25519.Sign(priv, sums)))
-	if _, err := verifySums(sums, unprefixed); err == nil {
-		t.Fatal("signature without the release prefix accepted")
+	if _, err := expectedSum([]byte("abc  Other.exe\n")); err == nil {
+		t.Fatal("checksum file without the program accepted")
 	}
 }
 

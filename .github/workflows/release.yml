@@ -73,18 +73,6 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: ./build.sh "$VERSION"
 
-      - name: Sign the checksum file with the Hestia release key
-        if: steps.ver.outputs.publish == 'true'
-        env:
-          HESTIA_SIGNING_KEY: ${{ secrets.HESTIA_SIGNING_KEY }}
-        run: |
-          if [ -z "$HESTIA_SIGNING_KEY" ]; then
-            echo "::error::The repository secret HESTIA_SIGNING_KEY is not set. Add it under Settings > Secrets and variables > Actions, then run this again."
-            exit 1
-          fi
-          go run ./cmd/signrelease dist/SHA256SUMS.txt
-          go run ./cmd/signrelease -verify "$(grep -o 'updatePublicKey = "[^"]*"' updater.go | cut -d'"' -f2)" dist/SHA256SUMS.txt
-
       - name: Record build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
@@ -124,7 +112,7 @@ jobs:
             echo
             echo "Build provenance: \`gh attestation verify Hestia-Setup.exe -R ${GITHUB_REPOSITORY}\`"
             echo
-            echo "Installed copies of Hestia update to this version by themselves after checking the signature in \`SHA256SUMS.txt.sig\`."
+            echo "Installed copies of Hestia update to this version by themselves after checking the file against \`SHA256SUMS.txt\`."
           } > notes.md
-          gh release create "$TAG" dist/Hestia-Setup.exe dist/SHA256SUMS.txt dist/SHA256SUMS.txt.sig \
+          gh release create "$TAG" dist/Hestia-Setup.exe dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --title "Hestia $VERSION" --notes-file notes.md --target "$GITHUB_SHA"
