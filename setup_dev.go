@@ -4,6 +4,7 @@ package main
 
 import (
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 )
@@ -29,5 +30,16 @@ func init() {
 		if err == nil {
 			extraLocalNet = n
 		}
+	}
+}
+
+// devTrayClick lets tests poke the tray icon on platforms that have one.
+var devTrayClick = func(a *App, event string) error { return nil }
+
+func init() {
+	devRoutes = func(a *App, api func(string, func(http.ResponseWriter, *http.Request) (any, error))) {
+		api("POST /api/dev/tray", func(_ http.ResponseWriter, r *http.Request) (any, error) {
+			return nil, devTrayClick(a, r.URL.Query().Get("event"))
+		})
 	}
 }

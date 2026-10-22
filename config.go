@@ -20,13 +20,19 @@ type DeviceCfg struct {
 }
 
 type Config struct {
-	Devices    []DeviceCfg `json:"devices"`
-	Background bool        `json:"background"`
-	TestPassed bool        `json:"testPassed"`
-	LastTest   time.Time   `json:"lastTest"`
+	Devices []DeviceCfg `json:"devices"`
+	// Stored inverted: closing the window leaves Hestia in the tray unless
+	// someone chose otherwise.
+	ExitOnClose   bool      `json:"exitOnClose"`
+	TrayHintShown bool      `json:"trayHintShown"`
+	TestPassed    bool      `json:"testPassed"`
+	LastTest      time.Time `json:"lastTest"`
 	// Stored inverted so that updates are on unless someone turned them off.
 	AutoUpdateOff bool `json:"autoUpdateOff"`
 }
+
+// Background reports whether Hestia keeps running in the tray after its window closes.
+func (c Config) Background() bool { return !c.ExitOnClose }
 
 // AutoUpdate reports whether Hestia may install verified updates by itself.
 func (c Config) AutoUpdate() bool { return !c.AutoUpdateOff }

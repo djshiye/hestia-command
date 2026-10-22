@@ -22,6 +22,9 @@ import (
 //go:embed web
 var webFS embed.FS
 
+// devRoutes adds test-only endpoints in development builds (build tag dev).
+var devRoutes func(a *App, api func(string, func(http.ResponseWriter, *http.Request) (any, error)))
+
 // appVersion is set at build time with -ldflags "-X main.appVersion=...".
 var appVersion = "dev"
 
@@ -69,6 +72,7 @@ type App struct {
 	relaunch     string // program to start after this one exits
 	relaunchArgs []string
 	updater      *Updater
+	tray         *Tray
 }
 
 func (a *App) stop() { a.quitOnce.Do(func() { close(a.quit) }) }
@@ -78,6 +82,7 @@ func NewApp(store *Store, token string) *App {
 	a.browser = NewBrowser(a.onDeviceChange)
 	a.hotkeys = NewHotkeys(a.onHotkey)
 	a.updater = newUpdater(a)
+	a.tray = newTray(a)
 	return a
 }
 
@@ -381,6 +386,11 @@ func (a *App) routes() http.Handler {
 		return nil, nil
 	})
 	api("GET /api/log", a.apiLog)
+	if devRoutes != nil {
+		devRoutes(a, api)
+	}
+	api("POST /api/window/open", func(http.ResponseWriter, *http.Request) (any, error) { a.openMainWindow(); return nil, nil })
+	api("POST /api/popup/close", func(http.ResponseWriter, *http.Request) (any, error) { a.tray.ClosePopup(); return nil, nil })
 	api("POST /api/update/check", func(http.ResponseWriter, *http.Request) (any, error) { a.updater.CheckNow(); return nil, nil })
 	api("POST /api/update/apply", func(http.ResponseWriter, *http.Request) (any, error) { return nil, a.updater.Apply() })
 	api("POST /api/install", func(http.ResponseWriter, *http.Request) (any, error) {
@@ -524,7 +534,8 @@ func (a *App) apiState(http.ResponseWriter, *http.Request) (any, error) {
 		"devices":            a.views(),
 		"testPassed":         cfg.TestPassed,
 		"lastTest":           cfg.LastTest,
-		"background":         cfg.Background,
+		"background":         cfg.Background(),
+		"tray":               traySupported(),
 		"autostart":          autostartEnabled(),
 		"install":            a.installView(),
 		"update":             a.updater.State(),
@@ -767,7 +778,7 @@ func (a *App) apiSettings(_ http.ResponseWriter, r *http.Request) (any, error) {
 	}
 	return nil, a.store.Update(func(c *Config) error {
 		if in.Background != nil {
-			c.Background = *in.Background
+			c.ExitOnClose = !*in.Background
 		}
 		if in.AutoUpdate != nil {
 			c.AutoUpdateOff = !*in.AutoUpdate
@@ -810,7 +821,13 @@ func (a *App) watchdog() {
 		a.mu.Lock()
 		beat := a.lastBeat
 		a.mu.Unlock()
-		if beat.IsZero() || a.store.Get().Background {
+		if beat.IsZero() || a.store.Get().Background() {
+			if !beat.IsZero() && time.Since(beat) > 25*time.Second {
+				a.mu.Lock()
+				a.lastBeat = time.Time{}
+				a.mu.Unlock()
+				a.tray.WindowClosed()
+			}
 			continue
 		}
 		if time.Since(beat) > 25*time.Second {
@@ -825,6 +842,36 @@ func fatal(msg string, err error) {
 	log.Printf("%s: %v", msg, err)
 	showError("Hestia could not start", msg+"\n\n"+err.Error())
 	os.Exit(1)
+}
+
+// openMainWindow shows the full app window (after closing the tray popup).
+func (a *App) openMainWindow() {
+	a.tray.ClosePopup()
+	openWindow(appURL(a.port, a.token))
+}
+
+// summary is the one-line state shown in the tray tooltip.
+func (a *App) summary() string {
+	var parts []string
+	for _, d := range a.views() {
+		if !d.Saved {
+			continue
+		}
+		state := "offline"
+		if d.Online {
+			switch d.Switch {
+			case "on", "off":
+				state = d.Switch
+			default:
+				state = "online"
+			}
+		}
+		parts = append(parts, d.Name+": "+state)
+	}
+	if len(parts) == 0 {
+		return "No switches set up yet"
+	}
+	return strings.Join(parts, "\n")
 }
 
 func (a *App) installView() map[string]any {

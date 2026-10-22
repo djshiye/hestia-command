@@ -38,11 +38,22 @@ The key is stored encrypted for your Windows user.
 - This tab unlocks once the test has passed and a key is confirmed.
 - Click the big round button to turn the switch on or off. You can rename a switch by clicking its name.
 - **Shortcut:** pick a key combination such as Ctrl+Alt+1 to toggle the switch from anywhere.
-- **Keep running after closing this window** keeps shortcuts working when the window is closed.
-- **Start with Windows** starts Hestia quietly after you sign in.
+- **Start with Windows** starts Hestia quietly in the tray after you sign in.
 - **Quit Hestia** stops it completely. Open it again from the Start menu.
 
 ![Control](screenshot-control.png)
+
+## Tray icon
+
+Closing the window doesn't stop Hestia: it keeps running as a small flame icon by the clock (click the **^** arrow on the taskbar if Windows hides it; you can drag it out to keep it visible).
+
+- **Click** the icon for a small popup with an on/off switch for each device. It closes by itself when you click elsewhere or press Esc.
+- **Right-click** it for a menu: turn a switch on or off, **Open Hestia**, or **Quit Hestia**.
+- **Hover** it to see each switch's state.
+
+If you'd rather Hestia close together with its window, turn off **Stay in the tray when this window is closed** in the Control tab.
+
+![Tray popup](screenshot-tray.png)
 
 ## 5. Activity and the 48-hour test
 

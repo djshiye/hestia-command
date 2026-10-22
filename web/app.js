@@ -417,7 +417,7 @@
   }
 
   $("bgToggle").addEventListener("change", async (e) => {
-    try { await api("POST", "/api/settings", { background: e.target.checked }); toast(e.target.checked ? "Hestia will keep running for shortcuts" : "Hestia will close with this window"); }
+    try { await api("POST", "/api/settings", { background: e.target.checked }); toast(e.target.checked ? "Hestia will stay in the tray" : "Hestia will close with this window"); }
     catch (err) { toast(err.message, true); }
   });
   $("autostartToggle").addEventListener("change", async (e) => {

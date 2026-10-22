@@ -16,17 +16,8 @@ import (
 // openWindow shows the app in a clean Edge app window (no tabs or address
 // bar), falling back to the default browser.
 func openWindow(url string) {
-	var candidates []string
-	for _, env := range []string{"ProgramFiles(x86)", "ProgramFiles", "LocalAppData"} {
-		if base := os.Getenv(env); base != "" {
-			candidates = append(candidates, filepath.Join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
-		}
-	}
-	dir, _ := appDir()
-	for _, exe := range candidates {
-		if _, err := os.Stat(exe); err != nil {
-			continue
-		}
+	if exe := edgePath(); exe != "" {
+		dir, _ := appDir()
 		cmd := exec.Command(exe, "--app="+url, "--user-data-dir="+filepath.Join(dir, "window"),
 			"--no-first-run", "--no-default-browser-check", "--window-size=1120,820")
 		if err := cmd.Start(); err == nil {
@@ -38,6 +29,19 @@ func openWindow(url string) {
 	cmd := exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	_ = cmd.Start()
+}
+
+// edgePath finds Microsoft Edge, or returns "" when it is not installed.
+func edgePath() string {
+	for _, env := range []string{"ProgramFiles(x86)", "ProgramFiles", "LocalAppData"} {
+		if base := os.Getenv(env); base != "" {
+			exe := filepath.Join(base, "Microsoft", "Edge", "Application", "msedge.exe")
+			if _, err := os.Stat(exe); err == nil {
+				return exe
+			}
+		}
+	}
+	return ""
 }
 
 func unsafePtr(p *uint16) unsafe.Pointer { return unsafe.Pointer(p) }

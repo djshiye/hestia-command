@@ -19,11 +19,14 @@ var (
 	procGetMessageW      = user32.NewProc("GetMessageW")
 	procPostThreadMsgW   = user32.NewProc("PostThreadMessageW")
 	procPeekMessageW     = user32.NewProc("PeekMessageW")
+	procTranslateMessage = user32.NewProc("TranslateMessage")
+	procDispatchMessageW = user32.NewProc("DispatchMessageW")
 )
 
 const (
 	wmHotkey    = 0x0312
 	wmApply     = 0x8001 // WM_APP + 1
+	wmRun       = 0x8002 // WM_APP + 2: run the next queued function on this thread
 	modAlt      = 0x0001
 	modControl  = 0x0002
 	modNoRepeat = 0x4000
@@ -47,10 +50,11 @@ type Hotkeys struct {
 	pending  map[string]string // device ID -> hotkey
 	result   chan map[string]string
 	active   map[int]string // hotkey id -> device ID
+	jobs     chan func()
 }
 
 func NewHotkeys(onPress func(string)) *Hotkeys {
-	h := &Hotkeys{onPress: onPress, result: make(chan map[string]string, 1), active: map[int]string{}}
+	h := &Hotkeys{onPress: onPress, result: make(chan map[string]string, 1), active: map[int]string{}, jobs: make(chan func(), 16)}
 	ready := make(chan struct{})
 	go func() {
 		runtime.LockOSThread()
@@ -64,6 +68,11 @@ func NewHotkeys(onPress func(string)) *Hotkeys {
 			if int32(r) <= 0 {
 				return
 			}
+			if m.hwnd != 0 {
+				procTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))
+				procDispatchMessageW.Call(uintptr(unsafe.Pointer(&m)))
+				continue
+			}
 			switch m.message {
 			case wmHotkey:
 				if id, ok := h.active[int(m.wParam)]; ok {
@@ -71,6 +80,12 @@ func NewHotkeys(onPress func(string)) *Hotkeys {
 				}
 			case wmApply:
 				h.apply()
+			case wmRun:
+				select {
+				case fn := <-h.jobs:
+					fn()
+				default:
+				}
 			}
 		}
 	}()
@@ -118,6 +133,21 @@ func (h *Hotkeys) Set(bindings map[string]string) map[string]string {
 		return errs
 	case <-time.After(3 * time.Second):
 		return map[string]string{"": "keyboard shortcuts did not respond"}
+	}
+}
+
+// Run executes fn on the message-loop thread, which windows and tray icons
+// must be created on. It waits for fn to finish.
+func (h *Hotkeys) Run(fn func()) {
+	done := make(chan struct{})
+	h.jobs <- func() { fn(); close(done) }
+	if r, _, _ := procPostThreadMsgW.Call(uintptr(h.threadID), wmRun, 0, 0); r == 0 {
+		<-h.jobs
+		return
+	}
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
 	}
 }
 

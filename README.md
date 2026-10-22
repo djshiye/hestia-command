@@ -4,6 +4,8 @@
 
 ![Hestia control screen](docs/screenshot-control.png)
 
+<img src="docs/screenshot-tray.png" alt="Tray popup" width="340" align="right">
+
 ---
 
 ## How to install
@@ -21,7 +23,7 @@ Then follow the three steps in the app: **Test**, **Setup**, **Control**. A full
 | | |
 | --- | --- |
 | **Updates** | Automatic. Once a day Hestia asks GitHub for a new version, checks its signature, and installs it the next time the window isn't in use (or right away when you click **Restart and update**). Turn it off with the switch at the bottom of the window. |
-| **Start with Windows** | Turn it on in the Control tab. Hestia then runs quietly after you sign in, so keyboard shortcuts always work. |
+| **Start with Windows** | Turn it on in the Control tab. Hestia then sits in the tray after you sign in, so keyboard shortcuts and the tray popup always work. |
 | **Uninstall** | Windows Settings → Apps → Installed apps → Hestia → Uninstall. It asks whether to keep your saved switches. |
 | **Check the download** (optional) | In PowerShell, `Get-FileHash .\Hestia-Setup.exe` must match `SHA256SUMS.txt` on the release page. |
 
@@ -42,7 +44,8 @@ Then follow the three steps in the app: **Test**, **Setup**, **Control**. A full
 | --- | --- |
 | **1. Test** | Checks that the switches on this network accept local control. It changes nothing. |
 | **2. Setup** | Reads each switch's local key once, straight from the switch, and stores it encrypted for your Windows user. |
-| **3. Control** | Unlocks after the test passes. It has an on/off button with live state, Ctrl+Alt keyboard shortcuts, and options to run in the background and start with Windows. |
+| **3. Control** | Unlocks after the test passes. It has an on/off button with live state, Ctrl+Alt keyboard shortcuts, and the option to start with Windows. |
+| **Tray icon** | Closing the window leaves Hestia running as a flame icon by the clock. Click it for a small popup with an on/off switch per device, right-click it for a menu with the same plus **Open Hestia** and **Quit**. Hover it to see every switch's state. |
 | **Activity** | Logs every command, drop-off and reconnection, so you can check the switch stays reliable with the cloud blocked. You can export the log. |
 
 ## Security

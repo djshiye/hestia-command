@@ -131,12 +131,14 @@ func main() {
 		}
 	}()
 	log.Printf("listening on 127.0.0.1:%d", app.port)
+	app.tray.Start()
 	if !*noWindow {
 		openWindow(appURL(app.port, token))
 	} else {
 		fmt.Println(appURL(app.port, token))
 	}
 	<-app.quit
+	app.tray.Remove()
 	_ = srv.Close()
 	os.Remove(instPath)
 	app.mu.Lock()
