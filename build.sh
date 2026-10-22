@@ -8,7 +8,7 @@ case "$VERSION" in
   [0-9]*.[0-9]*.[0-9]*) WINVER="$VERSION.0" ;;
   *) WINVER="0.0.0.0" ;;
 esac
-go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --arch amd64 \
+go tool go-winres make --in winres/winres.json --arch amd64 \
   --file-version "$WINVER" --product-version "$WINVER"
 mkdir -p dist
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \

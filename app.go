@@ -79,6 +79,7 @@ func NewApp(store *Store, token string) *App {
 }
 
 func (a *App) addEvent(kind, device, text string) {
+	device, text = cleanLabel(device, 32), cleanLabel(text, 300)
 	a.mu.Lock()
 	a.events = append(a.events, Event{T: time.Now(), Kind: kind, Device: device, Text: text})
 	if len(a.events) > 2000 {

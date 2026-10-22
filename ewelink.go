@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/md5"
+	"crypto/md5" // #nosec G501 -- required by the eWeLink LAN protocol
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -24,8 +24,11 @@ import (
 	"time"
 )
 
+// aesKey derives the AES key the way the Sonoff firmware does. MD5 is not
+// used for integrity or authentication here, only as the vendor's key
+// derivation, so a stronger hash would simply not talk to the device.
 func aesKey(deviceKey string) []byte {
-	sum := md5.Sum([]byte(deviceKey))
+	sum := md5.Sum([]byte(deviceKey)) // #nosec G401 G501 -- required by the eWeLink LAN protocol
 	return sum[:]
 }
 

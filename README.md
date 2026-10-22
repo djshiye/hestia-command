@@ -47,11 +47,19 @@ Then follow the three steps in the app: **Test**, **Setup**, **Control**. A full
 
 ## Security
 
-- The app window is served on `127.0.0.1` only. It's protected by a random per-run token, a Host-header check against DNS rebinding and a strict Content-Security-Policy.
-- Keys are encrypted with Windows DPAPI for the current user. They are never written to the log, and are shown only when you click **Show key**.
-- Hestia refuses to contact anything outside private, link-local or loopback addresses.
-- It installs per user, with no admin rights, and touches only its own folder, shortcuts and registry entries.
-- Releases are built by GitHub Actions from this repository, with signed build provenance. To check one: `gh attestation verify Hestia-Setup.exe -R djshiye/hestia-command`.
+Hestia is built to be safe to run on a normal home or office PC:
+
+- **Only your network.** It talks only to private, link-local or loopback addresses and never to the internet. It sends nothing to eWeLink, GitHub or anyone else, not even update checks.
+- **The window is private.** The app page is served on `127.0.0.1` only, behind a random 256-bit token that changes every run, a Host-header check against DNS rebinding, and a strict Content-Security-Policy. Other websites can't reach it.
+- **Keys stay encrypted.** Each switch's key is encrypted with Windows DPAPI for your Windows user, so other users on the PC and copies of the settings file can't read it. Keys are never written to the log, and are shown only when you click **Show key**.
+- **Nothing from the network is trusted.** Switch announcements are validated before use, and anything from them is cleaned before it reaches the screen or the log.
+- **Per-user install, no admin rights.** Hestia only ever touches its own folder, its two shortcuts and its own registry entries. Uninstall removes all of it.
+- **Verifiable releases.** Every release is built by GitHub Actions from this repository, with pinned actions, a published SHA-256 checksum and signed build provenance (`gh attestation verify Hestia-Setup.exe -R djshiye/hestia-command`). The CI run on every change includes static analysis and a scan for known vulnerabilities in dependencies.
+
+Two things to know:
+
+- **Windows warns once** because the download isn't code-signed; a signing certificate costs money. The checksum and provenance above are the free way to check a download.
+- **The switch's own protocol is the limit.** Anyone already on the same network can see encrypted commands pass by and could replay one (for example, turn the switch on again later). They can't read or forge commands without the key. That's how Sonoff designed the local mode, so keep the switch on a network you trust.
 
 ---
 

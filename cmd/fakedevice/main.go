@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/md5"
+	"crypto/md5" // #nosec G501 -- mirrors the Sonoff firmware
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -38,7 +38,7 @@ var (
 
 var group = &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353}
 
-func k() []byte { s := md5.Sum([]byte(*key)); return s[:] }
+func k() []byte { s := md5.Sum([]byte(*key)); return s[:] } // #nosec G401 -- mirrors the Sonoff firmware
 
 func enc(plain []byte) (string, string) {
 	b, _ := aes.NewCipher(k())
@@ -186,13 +186,17 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]any{"seq": s, "sequence": in.Sequence, "error": 0})
 		go announce(c)
 	})
-	go http.ListenAndServe(":"+strconv.Itoa(*port), lan)
+	go func() {
+		log.Println((&http.Server{Addr: ":" + strconv.Itoa(*port), Handler: lan, ReadHeaderTimeout: 5 * time.Second}).ListenAndServe())
+	}()
 
 	setup := http.NewServeMux()
 	setup.HandleFunc("GET /device", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]any{"deviceid": *id, "apikey": *key, "accept": "post"})
 	})
-	go http.ListenAndServe(*setupAddr, setup)
+	go func() {
+		log.Println((&http.Server{Addr: *setupAddr, Handler: setup, ReadHeaderTimeout: 5 * time.Second}).ListenAndServe())
+	}()
 	log.Printf("fake Sonoff %s on %s:%d", *id, myIP(), *port)
 	for {
 		time.Sleep(time.Hour)

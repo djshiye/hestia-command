@@ -8,6 +8,7 @@ package main
 import (
 	"log"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +19,26 @@ import (
 )
 
 const ewelinkService = "_ewelink._tcp.local."
+
+// Device IDs are 10 hex characters. Anything else announced on the network
+// is ignored rather than trusted.
+var reAnnouncedID = regexp.MustCompile(`^[0-9a-f]{10}$`)
+
+// cleanLabel keeps a network-supplied label to printable ASCII and a sane
+// length, so it can never smuggle control characters into the log or UI.
+func cleanLabel(s string, max int) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r < 0x20 || r > 0x7e {
+			continue
+		}
+		b.WriteRune(r)
+		if b.Len() >= max {
+			break
+		}
+	}
+	return b.String()
+}
 
 var mdnsGroup = &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353}
 
@@ -254,19 +275,23 @@ func (b *Browser) handle(msg *dns.Msg, src net.IP) {
 			kv := map[string]string{}
 			for _, s := range p.txt.Txt {
 				if k, v, ok := strings.Cut(s, "="); ok {
-					kv[strings.ToLower(k)] = v
+					kv[strings.ToLower(cleanLabel(k, 32))] = cleanLabel(v, 512)
 				}
 			}
 			d.TXT = kv
-			d.ID = kv["id"]
-			d.Type = kv["type"]
-			d.APIVer = kv["apivers"]
-			d.Seq = kv["seq"]
+			d.ID = strings.ToLower(kv["id"])
+			d.Type = cleanLabel(kv["type"], 32)
+			d.APIVer = cleanLabel(kv["apivers"], 16)
+			d.Seq = cleanLabel(kv["seq"], 16)
 			d.Encrypted = strings.EqualFold(kv["encrypt"], "true")
 		}
 		if d.ID == "" {
 			label := strings.SplitN(inst, ".", 2)[0]
-			d.ID = strings.TrimPrefix(strings.TrimPrefix(label, "ewelink_"), "eWeLink_")
+			d.ID = strings.ToLower(strings.TrimPrefix(strings.TrimPrefix(label, "ewelink_"), "eWeLink_"))
+		}
+		if !reAnnouncedID.MatchString(d.ID) {
+			delete(b.byInst, inst)
+			continue
 		}
 		if p.srv != nil {
 			d.Port = int(p.srv.Port)
