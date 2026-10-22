@@ -22,7 +22,8 @@ import (
 //go:embed web
 var webFS embed.FS
 
-const appVersion = "1.0.0"
+// appVersion is set at build time with -ldflags "-X main.appVersion=...".
+var appVersion = "dev"
 
 type Event struct {
 	T      time.Time `json:"t"`
@@ -65,6 +66,7 @@ type App struct {
 	hotkeyErr map[string]string
 	quit      chan struct{}
 	quitOnce  sync.Once
+	relaunch  string // program to start after this one exits
 }
 
 func (a *App) stop() { a.quitOnce.Do(func() { close(a.quit) }) }
@@ -354,6 +356,15 @@ func (a *App) routes() http.Handler {
 	api("POST /api/device/{id}/switch", a.apiSwitch)
 	api("POST /api/device/{id}/settings", a.apiDeviceSettings)
 	api("POST /api/device/{id}/remove", a.apiRemove)
+	api("POST /api/device/{id}/reveal", func(_ http.ResponseWriter, r *http.Request) (any, error) {
+		id := r.PathValue("id")
+		key, ok := a.store.DeviceKey(id)
+		if !ok {
+			return nil, errors.New("no key is saved for this switch")
+		}
+		a.addEvent("info", id, "Key shown on screen so it can be copied to another PC")
+		return map[string]string{"id": id, "key": key}, nil
+	})
 	api("POST /api/settings", a.apiSettings)
 	api("POST /api/heartbeat", func(http.ResponseWriter, *http.Request) (any, error) {
 		a.mu.Lock()
@@ -366,6 +377,19 @@ func (a *App) routes() http.Handler {
 		return nil, nil
 	})
 	api("GET /api/log", a.apiLog)
+	api("POST /api/install", func(http.ResponseWriter, *http.Request) (any, error) {
+		target, err := installSelf(a.port)
+		if err != nil {
+			a.addEvent("error", "", "Install failed: "+err.Error())
+			return nil, err
+		}
+		a.addEvent("info", "", "Installed to "+target)
+		a.mu.Lock()
+		a.relaunch = target
+		a.mu.Unlock()
+		go func() { time.Sleep(500 * time.Millisecond); a.stop() }()
+		return map[string]string{"path": target}, nil
+	})
 	mux.HandleFunc("GET /api/ping", func(w http.ResponseWriter, r *http.Request) {
 		if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Hestia-Token")), []byte(a.token)) != 1 {
 			http.Error(w, "forbidden", http.StatusForbidden)
@@ -484,20 +508,23 @@ func (a *App) apiState(http.ResponseWriter, *http.Request) (any, error) {
 	ev = append([]Event{}, ev...)
 	a.mu.Unlock()
 	return map[string]any{
-		"version":          appVersion,
-		"started":          a.started,
-		"interfaces":       a.browser.Interfaces(),
-		"packets":          packets,
-		"ewelinkPackets":   ewPackets,
-		"notes":            notes,
-		"listening":        listening,
-		"devices":          a.views(),
-		"testPassed":       cfg.TestPassed,
-		"lastTest":         cfg.LastTest,
-		"background":       cfg.Background,
-		"events":           ev,
-		"hotkeysSupported": a.hotkeys.Supported(),
-		"hotkeyChoices":    hotkeyChoices(),
+		"version":            appVersion,
+		"started":            a.started,
+		"interfaces":         a.browser.Interfaces(),
+		"packets":            packets,
+		"ewelinkPackets":     ewPackets,
+		"notes":              notes,
+		"listening":          listening,
+		"devices":            a.views(),
+		"testPassed":         cfg.TestPassed,
+		"lastTest":           cfg.LastTest,
+		"background":         cfg.Background,
+		"autostart":          autostartEnabled(),
+		"install":            a.installView(),
+		"autostartSupported": autostartSupported(),
+		"events":             ev,
+		"hotkeysSupported":   a.hotkeys.Supported(),
+		"hotkeyChoices":      hotkeyChoices(),
 	}, nil
 }
 
@@ -712,10 +739,20 @@ func (a *App) apiRemove(_ http.ResponseWriter, r *http.Request) (any, error) {
 func (a *App) apiSettings(_ http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		Background *bool `json:"background"`
+		Autostart  *bool `json:"autostart"`
 		ResetTest  bool  `json:"resetTest"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		return nil, errors.New("bad request")
+	}
+	if in.Autostart != nil {
+		if err := setAutostart(*in.Autostart); err != nil {
+			return nil, fmt.Errorf("could not change the startup setting: %w", err)
+		}
+		if *in.Autostart {
+			t := true
+			in.Background = &t // starting with Windows only makes sense if Hestia stays running
+		}
 	}
 	return nil, a.store.Update(func(c *Config) error {
 		if in.Background != nil {
@@ -774,4 +811,9 @@ func fatal(msg string, err error) {
 	log.Printf("%s: %v", msg, err)
 	showError("Hestia could not start", msg+"\n\n"+err.Error())
 	os.Exit(1)
+}
+
+func (a *App) installView() map[string]any {
+	running, present := installState()
+	return map[string]any{"supported": installSupported(), "installed": running, "present": present, "dir": installDir()}
 }

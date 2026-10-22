@@ -49,8 +49,24 @@ func existingInstance(path string) (*instanceInfo, bool) {
 
 func main() {
 	noWindow := flag.Bool("no-window", false, "do not open the app window")
+	minimized := flag.Bool("minimized", false, "start in the background without a window (used when starting with Windows)")
+	doUninstall := flag.Bool("uninstall", false, "remove Hestia from this PC")
+	quiet := flag.Bool("quiet", false, "with -uninstall: no questions, keep saved keys")
+	cleanup := flag.String("cleanup", "", "internal: remove the install folder after uninstalling")
 	fixedPort := flag.Int("port", 0, "listen on this local port (default: random)")
 	flag.Parse()
+	if *cleanup != "" {
+		time.Sleep(time.Second)
+		cleanupInstallDir(*cleanup)
+		return
+	}
+	if *doUninstall {
+		uninstall(*quiet)
+		return
+	}
+	if *minimized {
+		*noWindow = true
+	}
 
 	dir, err := appDir()
 	if err != nil {
@@ -95,6 +111,7 @@ func main() {
 	_ = os.WriteFile(instPath, raw, 0o600)
 	defer os.Remove(instPath)
 
+	refreshAutostartPath()
 	app.browser.Start()
 	app.applyHotkeys()
 	go app.monitor()
@@ -119,5 +136,14 @@ func main() {
 	}
 	<-app.quit
 	_ = srv.Close()
+	os.Remove(instPath)
+	app.mu.Lock()
+	next := app.relaunch
+	app.mu.Unlock()
+	if next != "" {
+		if err := launchDetached(next); err != nil {
+			log.Println("could not start the installed copy:", err)
+		}
+	}
 	log.Println("Hestia stopped")
 }

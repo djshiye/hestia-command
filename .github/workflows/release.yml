@@ -1,0 +1,96 @@
+name: Build and release Hestia
+
+# Push a tag like v1.2.0 to build and publish a release.
+# Run it by hand from the Actions tab to build a test copy without releasing.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Cross-compiling on Linux is cheaper than a Windows runner and gives the same .exe.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write      # create the release
+      id-token: write      # sign the build provenance
+      attestations: write  # publish the build provenance
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Vet and test
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+          go test ./...
+
+      - name: Work out the version
+        id: ver
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" = "tag" ]; then v="${REF_NAME#v}"; else v="0.0.0-dev+${GITHUB_SHA::7}"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Build Hestia-Setup.exe
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: ./build.sh "$VERSION"
+
+      - name: Record build provenance
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: dist/Hestia-Setup.exe
+
+      - name: Keep the build as a workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Hestia-${{ steps.ver.outputs.version }}
+          path: dist/
+          retention-days: 14
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          {
+            echo "## Hestia $VERSION"
+            echo
+            echo "Local control for Sonoff switches. No cloud, no account."
+            echo
+            echo "### How to install"
+            echo "1. Download **Hestia-Setup.exe** below."
+            echo "2. Double-click it. If Windows says *Windows protected your PC*, click **More info**, then **Run anyway**."
+            echo "3. Click **Install**. Hestia is added to your Start menu and desktop. No admin rights needed."
+            echo
+            echo "Full guide: https://github.com/${GITHUB_REPOSITORY}#how-to-install"
+            echo
+            echo "**Verify the download** (PowerShell): \`Get-FileHash .\\Hestia-Setup.exe\` should print:"
+            echo
+            echo '```'
+            cut -d' ' -f1 dist/SHA256SUMS.txt
+            echo '```'
+            echo
+            echo "Build provenance: \`gh attestation verify Hestia-Setup.exe -R ${GITHUB_REPOSITORY}\`"
+          } > notes.md
+          gh release create "$TAG" dist/Hestia-Setup.exe dist/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --title "Hestia $VERSION" --notes-file notes.md --verify-tag

@@ -40,9 +40,15 @@ func openWindow(url string) {
 	_ = cmd.Start()
 }
 
-func showError(title, text string) {
+func unsafePtr(p *uint16) unsafe.Pointer { return unsafe.Pointer(p) }
+
+func showInfo(title, text string) { messageBox(title, text, 0x40) }
+
+func showError(title, text string) { messageBox(title, text, 0x10) }
+
+func messageBox(title, text string, flags uintptr) {
 	user := windows.NewLazySystemDLL("user32.dll").NewProc("MessageBoxW")
 	t, _ := windows.UTF16PtrFromString(title)
 	m, _ := windows.UTF16PtrFromString(text)
-	user.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), 0x10)
+	user.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), flags)
 }

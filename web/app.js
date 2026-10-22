@@ -185,7 +185,9 @@
           : d.decryptError ? h("span", { class: "tag bad", text: "Wrong key" })
           : h("span", { class: "tag warn", text: "Saved, waiting for the switch" })),
         h("td", {}, statusEl(d)),
-        h("td", { class: "small" }, h("button", { class: "btn small", text: "Remove", onclick: () => removeDevice(d) })),
+        h("td", { class: "small actions" },
+          h("button", { class: "btn small", text: "Show key", onclick: () => revealKey(d) }),
+          h("button", { class: "btn small", text: "Remove", onclick: () => removeDevice(d) })),
       )))));
   }
 
@@ -206,6 +208,8 @@
       return;
     }
     $("bgToggle").checked = s.background;
+    $("autostartRow").hidden = !s.autostartSupported;
+    $("autostartToggle").checked = s.autostart;
     const tiles = $("tiles");
     if (tiles.contains(document.activeElement) && document.activeElement.tagName !== "BUTTON") return;
     tiles.replaceChildren(...s.devices.filter((d) => d.saved).map((d) => tile(d, s)));
@@ -261,8 +265,21 @@
       h("span", {}, e.text, e.device ? h("span", { class: "dev mono", text: e.device }) : null))) : [h("li", { class: "empty", text: "Nothing yet." })]));
   }
 
+  function renderInstall(s) {
+    const i = s.install || {};
+    const show = i.supported && !i.installed && sessionStorage.getItem("hestia-install-later") !== "1";
+    $("installBanner").hidden = !show;
+    if (!show) return;
+    $("installTitle").textContent = i.present ? "Update the installed Hestia" : "Install Hestia on this PC";
+    $("installText").textContent = i.present
+      ? `Replaces the installed copy with this version (${s.version}). Your switches, keys and settings are kept.`
+      : "Adds Hestia to your Start menu and desktop. No admin rights needed, and you can uninstall it from Windows Settings like any app.";
+    $("installBtn").textContent = i.present ? "Update" : "Install";
+  }
+
   function render() {
     const s = state;
+    renderInstall(s);
     renderSteps(s);
     $("ver").textContent = "Hestia " + s.version;
     if (tab === "test") renderTest(s);
@@ -333,6 +350,24 @@
     } catch (err) { toast(err.message, true); }
   });
 
+  async function revealKey(d) {
+    if (!window.confirm(`Show the key for ${d.name}? Anyone who sees it can control this switch on your network. Use it to set up another PC, for example one connected by cable.`)) return;
+    try {
+      const r = await api("POST", `/api/device/${encodeURIComponent(d.id)}/reveal`);
+      const box = $("keyReveal");
+      const copy = h("button", { class: "btn small", text: "Copy key", onclick: async () => {
+        try { await navigator.clipboard.writeText(r.key); toast("Key copied"); } catch { toast("Select the key and press Ctrl+C", true); }
+      } });
+      box.replaceChildren(
+        h("div", {}, h("b", { text: "Device ID " }), h("span", { class: "mono", text: r.id })),
+        h("div", {}, h("b", { text: "Key " }), h("span", { class: "mono", text: r.key })),
+        h("div", { class: "row" }, copy, h("button", { class: "btn small", text: "Hide", onclick: () => { box.hidden = true; box.replaceChildren(); } })),
+        h("p", { class: "muted small", text: "On the other PC, open Setup, choose \"Enter a key by hand\" and paste these. The key hides itself in 60 seconds." }));
+      box.hidden = false;
+      setTimeout(() => { box.hidden = true; box.replaceChildren(); }, 60000);
+    } catch (err) { toast(err.message, true); }
+  }
+
   async function removeDevice(d) {
     if (!window.confirm(`Remove ${d.name} and delete its saved key from this PC?`)) return;
     try { await api("POST", `/api/device/${encodeURIComponent(d.id)}/remove`); toast("Removed"); refresh(); }
@@ -362,6 +397,13 @@
     try { await api("POST", "/api/settings", { background: e.target.checked }); toast(e.target.checked ? "Hestia will keep running for shortcuts" : "Hestia will close with this window"); }
     catch (err) { toast(err.message, true); }
   });
+  $("autostartToggle").addEventListener("change", async (e) => {
+    try {
+      await api("POST", "/api/settings", { autostart: e.target.checked });
+      toast(e.target.checked ? "Hestia will start when you sign in to Windows" : "Hestia won't start with Windows");
+      refresh();
+    } catch (err) { toast(err.message, true); refresh(); }
+  });
   $("quitBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/quit"); } catch { /* already gone */ }
     document.body.replaceChildren(h("div", { class: "empty" }, h("b", { text: "Hestia has stopped." }), "You can close this window."));
@@ -374,6 +416,27 @@
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (err) { toast(err.message, true); }
+  });
+
+  $("installLater").addEventListener("click", () => {
+    sessionStorage.setItem("hestia-install-later", "1");
+    $("installBanner").hidden = true;
+  });
+  $("installBtn").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    b.replaceChildren(h("span", { class: "spinner" }), "Installing\u2026");
+    try {
+      await api("POST", "/api/install");
+      document.body.replaceChildren(h("div", { class: "empty" },
+        h("b", { text: "Hestia is installed." }),
+        "It's opening from your Start menu copy now. You can close this window and delete the downloaded file."));
+      setTimeout(() => window.close(), 2500);
+    } catch (err) {
+      toast(err.message, true);
+      b.disabled = false;
+      b.textContent = "Install";
+    }
   });
 
   // ---- start ----

@@ -211,7 +211,8 @@ input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color:
 .power-label { text-align: center; font-weight: 650; margin-top: -6px; }
 .tile-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--border); padding-top: 14px; }
 .tile-foot .err { grid-column: 1 / -1; color: var(--bad); font-size: 13px; }
-.settings { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.settings { display: flex; align-items: center; justify-content: space-between; gap: 16px 28px; flex-wrap: wrap; }
+.settings .toggle { flex: 1 1 300px; }
 .toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; color: var(--text); font-size: 14.5px; font-weight: 400; }
 .toggle small { display: block; font-size: 13px; }
 .toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -248,3 +249,10 @@ input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color:
 }
 .grow { flex: 1; min-width: 0; }
 #controlArea { display: flex; flex-direction: column; gap: 16px; }
+.actions { display: flex; gap: 8px; justify-content: flex-end; }
+.key-reveal { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--warn-soft); display: grid; gap: 6px; word-break: break-all; }
+.key-reveal p { margin: 4px 0 0; }
+.install-banner { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: linear-gradient(135deg, var(--accent-soft), var(--surface) 60%); }
+.install-banner img { border-radius: 11px; flex: none; }
+.install-banner p { margin: 2px 0 0; }
+@media (max-width: 760px) { .install-banner { flex-wrap: wrap; } }

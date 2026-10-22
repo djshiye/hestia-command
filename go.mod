@@ -3,6 +3,7 @@ module github.com/djshiye/hestia-command
 go 1.24.7
 
 require (
+	github.com/go-ole/go-ole v1.3.0
 	github.com/miekg/dns v1.1.62
 	golang.org/x/net v0.30.0
 	golang.org/x/sys v0.26.0
