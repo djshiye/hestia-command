@@ -67,13 +67,9 @@ cd hestia-command
 
 ### Publishing a release
 
-Push a version tag. The **Build and release Hestia** action vets and tests the code, builds `Hestia-Setup.exe`, records build provenance and publishes the release:
+No tools needed. On GitHub, open **Actions** → **Build and release Hestia** → **Run workflow**, type a version like `1.2.0`, and click **Run workflow**. A few minutes later the new release is on the Releases page. Before publishing, the action vets and tests the code, builds `Hestia-Setup.exe` and records signed build provenance.
 
-```sh
-git tag v1.2.0 && git push origin v1.2.0
-```
-
-You can also run the action by hand from the Actions tab. That builds a test copy without publishing anything.
+Pushing a tag such as `v1.2.0` does the same. If you run the action with the version left empty, it builds a test copy without publishing anything.
 
 ### Testing without a switch
 
