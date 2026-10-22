@@ -59,14 +59,16 @@ type App struct {
 	port    int
 	started time.Time
 
-	mu        sync.Mutex
-	live      map[string]*liveState
-	events    []Event
-	lastBeat  time.Time
-	hotkeyErr map[string]string
-	quit      chan struct{}
-	quitOnce  sync.Once
-	relaunch  string // program to start after this one exits
+	mu           sync.Mutex
+	live         map[string]*liveState
+	events       []Event
+	lastBeat     time.Time
+	hotkeyErr    map[string]string
+	quit         chan struct{}
+	quitOnce     sync.Once
+	relaunch     string // program to start after this one exits
+	relaunchArgs []string
+	updater      *Updater
 }
 
 func (a *App) stop() { a.quitOnce.Do(func() { close(a.quit) }) }
@@ -75,6 +77,7 @@ func NewApp(store *Store, token string) *App {
 	a := &App{store: store, token: token, started: time.Now(), live: map[string]*liveState{}, quit: make(chan struct{})}
 	a.browser = NewBrowser(a.onDeviceChange)
 	a.hotkeys = NewHotkeys(a.onHotkey)
+	a.updater = newUpdater(a)
 	return a
 }
 
@@ -378,6 +381,8 @@ func (a *App) routes() http.Handler {
 		return nil, nil
 	})
 	api("GET /api/log", a.apiLog)
+	api("POST /api/update/check", func(http.ResponseWriter, *http.Request) (any, error) { a.updater.CheckNow(); return nil, nil })
+	api("POST /api/update/apply", func(http.ResponseWriter, *http.Request) (any, error) { return nil, a.updater.Apply() })
 	api("POST /api/install", func(http.ResponseWriter, *http.Request) (any, error) {
 		target, err := installSelf(a.port)
 		if err != nil {
@@ -522,6 +527,7 @@ func (a *App) apiState(http.ResponseWriter, *http.Request) (any, error) {
 		"background":         cfg.Background,
 		"autostart":          autostartEnabled(),
 		"install":            a.installView(),
+		"update":             a.updater.State(),
 		"autostartSupported": autostartSupported(),
 		"events":             ev,
 		"hotkeysSupported":   a.hotkeys.Supported(),
@@ -741,6 +747,7 @@ func (a *App) apiSettings(_ http.ResponseWriter, r *http.Request) (any, error) {
 	var in struct {
 		Background *bool `json:"background"`
 		Autostart  *bool `json:"autostart"`
+		AutoUpdate *bool `json:"autoUpdate"`
 		ResetTest  bool  `json:"resetTest"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -755,9 +762,15 @@ func (a *App) apiSettings(_ http.ResponseWriter, r *http.Request) (any, error) {
 			in.Background = &t // starting with Windows only makes sense if Hestia stays running
 		}
 	}
+	if in.AutoUpdate != nil && *in.AutoUpdate {
+		defer a.updater.Kick()
+	}
 	return nil, a.store.Update(func(c *Config) error {
 		if in.Background != nil {
 			c.Background = *in.Background
+		}
+		if in.AutoUpdate != nil {
+			c.AutoUpdateOff = !*in.AutoUpdate
 		}
 		if in.ResetTest {
 			c.TestPassed = false

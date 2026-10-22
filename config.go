@@ -24,7 +24,12 @@ type Config struct {
 	Background bool        `json:"background"`
 	TestPassed bool        `json:"testPassed"`
 	LastTest   time.Time   `json:"lastTest"`
+	// Stored inverted so that updates are on unless someone turned them off.
+	AutoUpdateOff bool `json:"autoUpdateOff"`
 }
+
+// AutoUpdate reports whether Hestia may install verified updates by itself.
+func (c Config) AutoUpdate() bool { return !c.AutoUpdateOff }
 
 type Store struct {
 	mu   sync.Mutex

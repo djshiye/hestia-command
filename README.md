@@ -20,7 +20,7 @@ Then follow the three steps in the app: **Test**, **Setup**, **Control**. A full
 
 | | |
 | --- | --- |
-| **Update** | Download the new `Hestia-Setup.exe`, open it and click **Update**. Your switches and keys are kept. |
+| **Updates** | Automatic. Once a day Hestia asks GitHub for a new version, checks its signature, and installs it the next time the window isn't in use (or right away when you click **Restart and update**). Turn it off with the switch at the bottom of the window. |
 | **Start with Windows** | Turn it on in the Control tab. Hestia then runs quietly after you sign in, so keyboard shortcuts always work. |
 | **Uninstall** | Windows Settings → Apps → Installed apps → Hestia → Uninstall. It asks whether to keep your saved switches. |
 | **Check the download** (optional) | In PowerShell, `Get-FileHash .\Hestia-Setup.exe` must match `SHA256SUMS.txt` on the release page. |
@@ -49,7 +49,8 @@ Then follow the three steps in the app: **Test**, **Setup**, **Control**. A full
 
 Hestia is built to be safe to run on a normal home or office PC:
 
-- **Only your network.** It talks only to private, link-local or loopback addresses and never to the internet. It sends nothing to eWeLink, GitHub or anyone else, not even update checks.
+- **Only your network, plus one daily call to GitHub.** Switch control talks only to private, link-local or loopback addresses. The single exception is the update check: once a day Hestia fetches the latest release details from `api.github.com` over HTTPS. Nothing about you or your switches is sent. The switch at the bottom of the window turns it off.
+- **Updates are signed.** An update is installed only if its checksum file carries a valid Ed25519 signature from the Hestia release key built into the app, and the downloaded program matches that signed checksum. A tampered download, an impostor release, or a release built without the private key is refused, so even a compromised GitHub account can't push code to users.
 - **The window is private.** The app page is served on `127.0.0.1` only, behind a random 256-bit token that changes every run, a Host-header check against DNS rebinding, and a strict Content-Security-Policy. Other websites can't reach it.
 - **Keys stay encrypted.** Each switch's key is encrypted with Windows DPAPI for your Windows user, so other users on the PC and copies of the settings file can't read it. Keys are never written to the log, and are shown only when you click **Show key**.
 - **Nothing from the network is trusted.** Switch announcements are validated before use, and anything from them is cleaned before it reaches the screen or the log.
@@ -78,6 +79,8 @@ cd hestia-command
 No tools needed. On GitHub, open **Actions** → **Build and release Hestia** → **Run workflow**, type a version like `1.2.0`, and click **Run workflow**. A few minutes later the new release is on the Releases page. Before publishing, the action vets and tests the code, builds `Hestia-Setup.exe` and records signed build provenance.
 
 Pushing a tag such as `v1.2.0` does the same. If you run the action with the version left empty, it builds a test copy without publishing anything.
+
+Publishing needs the repository secret `HESTIA_SIGNING_KEY` (the Ed25519 release key; its public half is in `updater.go`). The action signs `SHA256SUMS.txt` with it and attaches the signature, which installed copies check before updating themselves. To create a new key pair: `go run ./cmd/signrelease -gen`.
 
 ### Testing without a switch
 

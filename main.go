@@ -112,10 +112,12 @@ func main() {
 	defer os.Remove(instPath)
 
 	refreshAutostartPath()
+	cleanupOldUpdate()
 	app.browser.Start()
 	app.applyHotkeys()
 	go app.monitor()
 	go app.watchdog()
+	go app.updater.run()
 
 	srv := &http.Server{
 		Handler:           app.routes(),
@@ -138,10 +140,10 @@ func main() {
 	_ = srv.Close()
 	os.Remove(instPath)
 	app.mu.Lock()
-	next := app.relaunch
+	next, nextArgs := app.relaunch, app.relaunchArgs
 	app.mu.Unlock()
 	if next != "" {
-		if err := launchDetached(next); err != nil {
+		if err := launchDetached(next, nextArgs...); err != nil {
 			log.Println("could not start the installed copy:", err)
 		}
 	}

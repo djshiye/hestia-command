@@ -49,6 +49,13 @@ The key is stored encrypted for your Windows user.
 - The Activity tab shows every on/off command, drop-off and reconnection, with uptime per switch.
 - After the cloud is blocked, leave Hestia running for 48 hours. Then click **Export log** and send the file over.
 
+## Updates
+
+Hestia keeps itself up to date. Once a day it asks GitHub whether there's a new version, checks the new version's signature, and installs it when you're not using the window. If the window is open, a green banner offers **Restart and update**; the restart takes a few seconds and your switches stay as they were.
+
+- The switch **Update automatically** at the bottom of the window turns this off. **Check now** checks on the spot.
+- This daily check is the only time Hestia ever uses the internet, and it only talks to GitHub.
+
 ## Uninstall
 
 Go to Windows Settings → Apps → Installed apps → **Hestia** → **Uninstall**. It asks whether to also delete your saved switches and keys.

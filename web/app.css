@@ -256,3 +256,10 @@ input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color:
 .install-banner img { border-radius: 11px; flex: none; }
 .install-banner p { margin: 2px 0 0; }
 @media (max-width: 760px) { .install-banner { flex-wrap: wrap; } }
+.foot { flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.foot-updates { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.toggle.mini { font-size: 13px; gap: 8px; }
+.toggle.mini .track { width: 32px; height: 18px; }
+.toggle.mini .thumb { width: 12px; height: 12px; }
+.toggle.mini input:checked + .track .thumb { transform: translateX(14px); }
+.update-banner { border-color: color-mix(in srgb, var(--good) 45%, var(--border)); background: linear-gradient(135deg, var(--good-soft), var(--surface) 60%); }

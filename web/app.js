@@ -265,6 +265,28 @@
       h("span", {}, e.text, e.device ? h("span", { class: "dev mono", text: e.device }) : null))) : [h("li", { class: "empty", text: "Nothing yet." })]));
   }
 
+  function renderUpdate(s) {
+    const u = s.update || {};
+    $("updateRow").hidden = !u.supported;
+    $("updateBanner").hidden = !u.ready;
+    if (u.ready) {
+      $("updateTitle").textContent = `Hestia ${u.ready} is ready to install`;
+    }
+    if (!u.supported) return;
+    const t = $("autoUpdateToggle");
+    if (document.activeElement !== t) t.checked = !!u.enabled;
+    let status;
+    if (u.checking) status = "Checking\u2026";
+    else if (u.downloading) status = `Downloading ${u.available}\u2026`;
+    else if (u.ready) status = `${u.ready} ready`;
+    else if (u.error) status = u.error;
+    else if (u.available) status = `${u.available} available`;
+    else if (u.lastCheck && !u.lastCheck.startsWith("0001")) status = `Up to date, checked ${ago(u.lastCheck)}`;
+    else status = "Not checked yet";
+    $("updateStatus").textContent = status;
+    $("updateCheck").disabled = !!u.checking || !!u.downloading;
+  }
+
   function renderInstall(s) {
     const i = s.install || {};
     const show = i.supported && !i.installed && sessionStorage.getItem("hestia-install-later") !== "1";
@@ -280,6 +302,7 @@
   function render() {
     const s = state;
     renderInstall(s);
+    renderUpdate(s);
     renderSteps(s);
     $("ver").textContent = "Hestia " + s.version;
     if (tab === "test") renderTest(s);
@@ -436,6 +459,34 @@
       toast(err.message, true);
       b.disabled = false;
       b.textContent = "Install";
+    }
+  });
+
+  $("autoUpdateToggle").addEventListener("change", async (e) => {
+    try {
+      await api("POST", "/api/settings", { autoUpdate: e.target.checked });
+      toast(e.target.checked ? "Hestia will update itself" : "Automatic updates are off");
+      refresh();
+    } catch (err) { toast(err.message, true); refresh(); }
+  });
+  $("updateCheck").addEventListener("click", async () => {
+    try { await api("POST", "/api/update/check"); setTimeout(refresh, 500); }
+    catch (err) { toast(err.message, true); }
+  });
+  $("updateApply").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    b.replaceChildren(h("span", { class: "spinner" }), "Restarting\u2026");
+    try {
+      await api("POST", "/api/update/apply");
+      document.body.replaceChildren(h("div", { class: "empty" },
+        h("b", { text: "Hestia is restarting with the new version." }),
+        "This window will close. Hestia opens again by itself in a few seconds."));
+      setTimeout(() => window.close(), 3000);
+    } catch (err) {
+      toast(err.message, true);
+      b.disabled = false;
+      b.textContent = "Restart and update";
     }
   });
 

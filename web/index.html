@@ -29,6 +29,14 @@
 </nav>
 
 <main>
+  <div class="card install-banner update-banner" id="updateBanner" hidden>
+    <img src="icon.svg" alt="" width="44" height="44">
+    <div class="grow">
+      <h2 id="updateTitle">Hestia update ready</h2>
+      <p class="muted" id="updateText">It was downloaded from GitHub and its signature checked. Restarting takes a few seconds.</p>
+    </div>
+    <button class="btn primary big" id="updateApply">Restart and update</button>
+  </div>
   <div class="card install-banner" id="installBanner" hidden>
     <img src="icon.svg" alt="" width="44" height="44">
     <div class="grow">
@@ -145,7 +153,19 @@
   </section>
 </main>
 
-<footer class="foot muted small"><span id="ver"></span><span>Talks only to devices on your local network.</span></footer>
+<footer class="foot muted small">
+  <span id="ver"></span>
+  <span class="foot-updates" id="updateRow" hidden>
+    <label class="toggle mini" title="Once a day Hestia asks GitHub for a new version. This is the only internet connection it ever makes.">
+      <input type="checkbox" id="autoUpdateToggle">
+      <span class="track"><span class="thumb"></span></span>
+      <span>Update automatically</span>
+    </label>
+    <span id="updateStatus"></span>
+    <button class="btn small" id="updateCheck">Check now</button>
+  </span>
+  <span>Talks only to devices on your local network.</span>
+</footer>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <script src="app.js"></script>
 </body>
